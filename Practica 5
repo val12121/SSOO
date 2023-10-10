@@ -1,0 +1,22 @@
+#!/bin/bash
+
+# Mi primer script
+
+# sysinfo - Un script que informa del estado del sistema
+
+title="Información del sistema"
+RIGHT_NOW="$(date +"%x %r%Z")"
+TIME_STANP="Actulizada el $RIGHT_NOW por $USER"
+
+TEXT_BOLD=$(tput bold)
+TEXT_GREEN=$(tput setaf 6)
+TEXT_RESET=$(tput sgr0)
+TEXT_ULINE=$(tput sgr 0 1)
+
+cat << _EOF_
+
+        $TEXT_BOLD$title$TEXT_RESET
+
+        $TEXT_GREEN$TIME_STANP$TEXT_RESET
+
+_EOF_
