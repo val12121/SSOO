@@ -1,0 +1,71 @@
+#!/bin/bash
+
+ARC="" 
+PROG=""
+STR=""
+ARG=""
+args=""
+NATTCH=false
+UUID=$(uuidgen)
+
+attach_me() {  
+  
+  PID=$(pgrep -n $PROG)
+  
+  if [[ -z $PID ]]; then
+    echo "No se encontró el proceso que buscas"
+  fi
+
+}
+
+usage()
+{
+  echo "usage: scdebug [-h] [-sto arg] [-v | -vall] [-nattch progtoattach] [prog [arg1 …]"
+  exit 0
+}
+
+while [[ $# -gt 0 ]]; do
+	case $1 in
+
+    -h | --help )
+     	usage
+     	;;
+  
+    -sto)
+     	shift
+    	STR=$1
+    	shift
+    	;;
+
+    -nattch)
+      NATTCH=true
+      shift
+      ;;   
+   
+    *)    
+		  PROG="$1"
+		  shift
+    	args=("$@")
+    	break
+    	;;
+	esac
+done
+
+if [[ -n $PROG ]]; then
+  mkdir -p /$HOME/.scdebug/$PROG
+  
+  if [[ "$NATTCH" == false ]]; then 
+	  strace $STR -o $HOME/.scdebug/$PROG/trace_$(uuidgen).txt ./$PROG "$args" & 
+  
+  else    
+    attach_me
+    strace $STR -p $PID -o $HOME/.scdebug/$PROG/trace_$(uuidgen).txt & #Aqui da el error
+    echo "Llego aquí?"
+  fi
+
+else 
+	echo "Error: Se debe especificar un programa
+	      Haga -h o -help para ayuda"
+fi
+
+exit 0
