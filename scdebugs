@@ -1,0 +1,208 @@
+#!./ptbash
+
+ARC="" 
+PROG=""
+STR=""
+ARG=""
+args=""
+NATTCH=false
+UUID=$(uuidgen)
+v_op=false
+vall_op=false
+PID_list=()
+new_PID=""
+BBP="====" 
+
+PROGNAME=$(basename $0)
+
+attach_me() {  
+  
+  PID=$(pgrep -n "$PROG")
+
+  if [[ -z $PID ]]; then
+    echo "No se encontró el proceso que buscas"
+    exit 1
+  fi
+
+}
+
+launch_strace()
+{  
+  echo " "
+  error_t="Error en el $1 con código: strace -p $1 -o $2"
+  strace -p $1 -o $2 1>&2; echo $error_t >&2 || tee -a $2 
+  #tee -a $2 pone el resultado en la salida estándar y en el archivo de depuración 
+  #Aquí uso el >&2 para redirigir un mensaje normal como un mensaje de error
+  echo " "
+}
+
+nattch_me() {
+
+  for PROG in ${args[@]}; do
+    mkdir -p /$HOME/.scdebug/$PROG
+    attach_me
+    UUID=$(uuidgen)
+    echo strace $STR -p $PID -o $HOME/.scdebug/$PROG/trace_$UUID.txt
+    strace $STR -p $PID -o $HOME/.scdebug/$PROG/trace_$UUID.txt &
+    
+  done
+
+}
+#launch_strace $PID $HOME/.scdebug/$PROG/trace_$UUID.txt & 
+stop_me() {
+
+  LaunchProg="$PROG" 
+  commName=$COMM 
+  echo -n "traced_$commName" > /proc/$$/comm
+  kill -SIGSTOP $$
+  exec $LaunchProg
+
+}
+
+usage()
+{
+  echo "usage: scdebug [-h] [-sto arg] [-v | -vall] [-nattch progtoattach] [prog [arg1 …]"
+  exit 0
+}
+
+kill_me() 
+{
+
+  PID_list=$(ps -u $USER --no-headers -o pid,stime --sort=stime | awk '{print $1}' | tr '\n' ' ')
+  kill -15 $PID_list
+  sleep 3
+  for new_PID in ${PID_list[@]}; do
+    Tracer_PID=$(cat /proc/$new_PID/status | tr -s " " | cut -f2 -d ":" | sed -n '8p')
+    if [ $Tracer_PID -ne 0 ] && [ -n $Tracer_PID ]; then 
+      kill -9 $Tracer_PID
+    fi
+
+  done
+  
+  PID_list=$(ps -u $USER --no-headers -o pid,stime --sort=stime | awk '{print $1}' | tr '\n' ' ')
+  kill -9 $PID_list
+   
+  # No hace falta el $() en ninguno de los casos porque no lo estamos asignando a ninguna variable
+
+}
+
+pattch_me() {
+
+  for new_PID in ${args[@]}; do 
+    PROGM=$(ps -p $new_PID -o comm=)  
+    mkdir -p /$HOME/.scdebug/$PROGM 
+    UUID=$(uuidgen)
+    strace $STR -p $new_PID -o $HOME/.scdebug/$PROGM/trace_$UUID.txt &
+    echo "El proceso que se ha pasado pertenece al ejecutable: $PROGM"
+  done
+
+  exit 0
+
+}
+
+while [[ $# -gt 0 ]]; do
+	case $1 in
+
+    -h | --help )
+     	usage
+     	;;
+  
+    -sto)
+     	shift
+    	STR=$1
+    	shift
+    	;;
+
+    -nattch)
+      NATTCH=true
+      shift
+      args=("$@")
+      nattch_me
+      ;;   
+
+    -v)
+      v_op=true
+      shift
+    ;;
+
+    -vall)
+      vall_op=true
+      shift
+    ;;
+
+    -S)
+      shift 
+      COMM=$1
+      shift  
+      PROG=$1
+      shift
+      args=("$@") 
+      stop_me 
+    ;;
+
+    -k)
+      shift 
+      PROG="$1" 
+      kill_me 
+    ;;
+
+    -pattch)
+      shift
+      args=("$@") 
+      pattch_me
+    ;;
+
+    *)    
+		  PROG="$1"
+		  shift
+    	args=("$@")
+    	break
+    	;;
+	esac
+done
+
+if [[ -n "$PROG" ]]; then
+  
+  if [[ "$v_op" == true ]]; then
+
+    Trace=$(ls $HOME/.scdebug/$PROG --sort=time | head -n 1)
+    Time_trace=$Trace
+
+    echo "    
+            =============== COMMAND: -v =======================
+        === TRACE FILE: $Trace ===
+              ===== TIME: $(date -r $HOME/.scdebug/$PROG/$Time_trace) ====="
+
+  elif [[ "$vall_op" == true ]]; then 
+  
+    echo "Por hacer X"
+
+  else
+    
+    if [ "$NATTCH" = false ]; then 
+      mkdir -p /$HOME/.scdebug/$PROG
+      strace $STR -o $HOME/.scdebug/$PROG/trace_$(uuidgen).txt ./$PROG "$args" &
+    fi
+
+    PID_list=$(ps -u $USER --no-headers -o pid,stime --sort=stime | awk '{print $1}' | tr '\n' ' ')
+
+    for new_PID in ${PID_list[@]}; do
+      if [ -d /proc/$new_PID ]; then
+        #Por hacer un if que me aclare si un proceso se está ejecutando o no
+          echo "$BBP Trace PID = $new_PID; Nombre = $(ps -p $new_PID -o comm=) $BBP" 
+          echo "$BBP Tracer PID = $(cat /proc/$new_PID/status | grep TracerPid | cut -f2 -d ":") $BBP" 
+        Tracer_PID=$(cat /proc/$new_PID/status | grep TracerPid | cut -f2 -d ":") 
+        if [ $Tracer_PID -ne 0 ] && [ -n $Tracer_PID ]; then 
+          echo "$BBP Nombre del proceso trazador = $(ps -p $Tracer_PID -o comm=) $BBP"
+        fi
+        echo " "  
+      fi
+    done
+  fi 
+
+else 
+	echo "Error: Se debe especificar un programa
+	      Haga -h o -help para ayuda"
+fi
+
+exit 0
