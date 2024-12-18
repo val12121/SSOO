@@ -5,25 +5,22 @@
 //--------------------------------------
 
 int main(int argc, char *argv[]) {
-    Opcion opciones{};
-    auto resultado = parse_args(argc, argv);
-
-    if (!resultado.has_value()) {
+    auto opciones = parse_args(argc, argv);
+    if (!opciones.has_value()) {
         std::cerr << "No se pudieron parsear los argumentos correctamente." << std::endl;
         return 1;
     }
 
-    Opcion opcion_resultado = resultado.value();
-    std::cout << "Archivo especificado: " << opcion_resultado.get_archivo() << std::endl;
-
-    // Leer contenido del archivo
-    auto contenido = read_all(opcion_resultado.get_archivo());
-    if (contenido) {
-        send_response("Content-Length: " + std::to_string(contenido->size()), contenido.value());
-    } else {
+    const auto& opcion_resultado = opciones.value();
+    auto resultado = read_all(opcion_resultado.get_archivo());
+    if (!resultado) {
         send_response("404 Not Found");
-        return 1; // Salida con error
+        return 1;
     }
 
+    SafeMap mapa = std::move(resultado.value());
+    send_response("Content-Length: " + std::to_string(mapa.get().size()), mapa.get());
+
+    // Al finalizar, el destructor de SafeMap desmapeará la región automáticamente
     return 0;
 }

@@ -42,25 +42,28 @@ std::optional<Opcion> parse_args(int argc, char *argv[]) {
 //------------> READ ALL <--------------
 //--------------------------------------
 
-std::expected<std::string_view, int> read_all(const std::string& archivo) { 
-  
-  int fd = open( archivo.c_str(), O_RDONLY );
-  std::cout << "Abriendo el archivo - open ( " << archivo << " )\n";
-  
-  if (fd == -1)
-  {
-    throw std::system_error( errno, std::system_category(), "Fallo en open()" );
-  }
-  int file_size = lseek( fd, 0, SEEK_END ); //Miramos el tamaño del archivo
+std::expected<SafeMap, int> read_all(const std::string& archivo) {
+    int fd = open(archivo.c_str(), O_RDONLY);
+    if (fd == -1) {
+        return std::unexpected(errno);
+    }
 
-  void* mapped_file = mmap( nullptr, file_size, PROT_READ, MAP_SHARED, fd, 0 ); 
-  //Se mapea el archivo, indicando su tamaño, sus permisos, y la memoria compartida
-  if (mapped_file == MAP_FAILED) {
-    close(fd);
-    return std::unexpected(errno);
-  }
+    // Determinar el tamaño del archivo
+    struct stat st;
+    if (fstat(fd, &st) == -1) {
+        close(fd);
+        return std::unexpected(errno);
+    }
+    size_t file_size = st.st_size;
 
-  close(fd);
-  return std::string_view(static_cast<char*>(mapped_file), file_size);
+    // Mapear el archivo en memoria
+    void* mapped_file = mmap(nullptr, file_size, PROT_READ, MAP_SHARED, fd, 0);
+    close(fd);  // Se puede cerrar el archivo después de mapear
+
+    if (mapped_file == MAP_FAILED) {
+        return std::unexpected(errno);
+    }
+
+    // Devolver el SafeMap
+    return SafeMap(mapped_file, file_size);
 }
-
