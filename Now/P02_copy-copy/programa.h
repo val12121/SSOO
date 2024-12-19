@@ -33,6 +33,7 @@ public:
   void set_verbose(bool flag) { flag_verbose = flag; }
   void set_archivo(std::string archivo) { archivo_ = archivo; }
   void set_port(uint16_t port) { port_ = port; }
+  void set_flag_port (bool flag) { flag_port = flag; }
 
   // Getters
   bool get_verbose() { return flag_verbose; }
@@ -43,6 +44,7 @@ public:
 private:
   bool flag_verbose = false;
   bool flag_help = false;
+  bool flag_port = false;
   std::string archivo_ = "";
   uint16_t port_;
 };

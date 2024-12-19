@@ -39,6 +39,9 @@ std::optional<Opcion> parse_args(int argc, char *argv[])
     {
       opciones.set_archivo(argumento);
     }
+    else if (argumento == "-p") {
+      opciones.set_flag_port(true);
+    }
     else
     {
       std::cerr << "Argumento desconocido: " << argumento << std::endl;

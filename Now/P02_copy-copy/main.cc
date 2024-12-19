@@ -27,7 +27,7 @@ int main(int argc, char *argv[])
 
   std::cout << "Hola" << std::endl;
   // Obtener el puerto desde los argumentos o la variable de entorno
-  std::string port_env = getenv_port("DOCSERVER_PORT"); //Variable de entorno, DOCSERVER
+  std::string port_env = getenv_port("DOCSERVER_PORT"); // Variable de entorno, DOCSERVER
 
   uint16_t port = port_env.empty() ? 8080 : static_cast<uint16_t>(std::stoi(port_env));
   if (opciones.get_port() > 0)
@@ -36,8 +36,7 @@ int main(int argc, char *argv[])
     std::cout << port;
   }
 
-
-  // Crear el socket  
+  // Crear el socket
   auto socket_result = make_socket(port);
   if (!socket_result)
   {
@@ -47,6 +46,10 @@ int main(int argc, char *argv[])
 
   SafeFD server_socket = std::move(socket_result.value());
 
+  if (opciones.get_verbose())
+  {
+    std::cerr << "---> listen: Puesto en modo escucha a través del puerto: " << port << std::endl;
+  }
   // Poner el socket a la escucha
   int listen_result = listen_connection(server_socket);
   if (listen_result != 0)
@@ -54,8 +57,6 @@ int main(int argc, char *argv[])
     std::cerr << "Error en listen: " << std::strerror(listen_result) << std::endl;
     return 1;
   }
-
-  std::cout << "Servidor escuchando en el puerto " << port << std::endl;
 
   // Bucle principal para aceptar conexiones
   while (true)
@@ -66,6 +67,11 @@ int main(int argc, char *argv[])
     {
       std::cerr << "Error al aceptar conexión: " << std::strerror(client_result.error()) << std::endl;
       continue; // Error leve, sigue esperando conexiones
+    }
+
+    if (opciones.get_verbose())
+    {
+      std::cerr << "---> accept: Conexión aceptada" << std::endl;
     }
 
     SafeFD client_socket = std::move(client_result.value());
@@ -103,10 +109,9 @@ int main(int argc, char *argv[])
     else if (send_status != 0)
     {
       std::cerr << "Error fatal al enviar respuesta: " << std::strerror(send_status) << std::endl;
-      return 1; // Error fatal
+      return 1;
     }
   }
 
   return 0;
-  
 }
