@@ -9,6 +9,11 @@
 #include <sys/stat.h>
 #include <cstring>
 #include <expected>
+#include <cstdint>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <cstdlib>
+#include "safe_fd.h"
 
 //--------------------------------------
 //-----------> CLASS OPCION <-----------
@@ -27,16 +32,19 @@ public:
   // Setters
   void set_verbose(bool flag) { flag_verbose = flag; }
   void set_archivo(std::string archivo) { archivo_ = archivo; }
+  void set_port(uint16_t port) { port_ = port; }
 
   // Getters
   bool get_verbose() { return flag_verbose; }
   bool get_help() { return flag_help; }
+  uint16_t get_port() const { return port_; }
   std::string get_archivo() const { return archivo_; }
 
 private:
   bool flag_verbose = false;
   bool flag_help = false;
   std::string archivo_ = "";
+  uint16_t port_;
 };
 
 //--------------------------------------
@@ -71,11 +79,9 @@ public:
   {
     if (!is_valid())
     {
-      // std::cout << "Hola lenteja" << std::endl;
       throw std::runtime_error("Intento de acceso a un mapeo no válido.");
     }
 
-    //std::cout << sv_.size() << std::endl;
     return sv_;
   }
 
@@ -115,5 +121,35 @@ std::expected<SafeMap, int> read_all(const std::string &archivo, Opcion opcion_)
 //--------------------------------------
 
 void send_response(std::string_view header, std::string_view body = {});
+
+//--------------------------------------
+//-------------> GETENV <---------------
+//--------------------------------------
+
+std::string getenv_port (const std::string& name);
+
+//--------------------------------------
+//-----------> MAKE SOCKET <------------
+//--------------------------------------
+
+std::expected<SafeFD, int> make_socket(uint16_t port);
+
+//--------------------------------------
+//--------> LISTEN CONNECTION <---------
+//--------------------------------------
+
+int listen_connection(const SafeFD& socket);
+
+//--------------------------------------
+//--------> ACCEPT CONNECTION <---------
+//--------------------------------------
+
+std::expected<SafeFD, int> accept_connection(const SafeFD& socket, sockaddr_in& client_addr);
+
+//--------------------------------------
+//------> SEND RESPONSE SOCKET <--------
+//--------------------------------------
+
+int send_response(const SafeFD& socket, std::string_view header, std::string_view body = {});
 
 #endif
