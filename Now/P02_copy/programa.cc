@@ -1,35 +1,4 @@
-#include <iostream>
-#include <optional>
-#include <sys/mman.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <sys/stat.h>
-#include <cstring>
-#include <expected>
-
-class Opcion
-{
-  public:
-    Opcion(bool flag_help_, bool flag_verbose_, const std::string archivo = "") {
-      flag_help = flag_help_;
-      flag_verbose = flag_verbose_;
-    }
-    Opcion() {};
-    
-    //Setters
-    void set_verbose( bool flag ) { flag_verbose = flag; }
-    void set_archivo( std::string archivo ) { archivo_= archivo; }
-  
-    //Getters
-    bool get_verbose() { return flag_verbose; }
-    bool get_help() { return flag_help; }
-    std::string get_archivo() { return archivo_; }
-
-  private:
-    bool flag_verbose = false;
-    bool flag_help = false;
-    std::string archivo_ ="";
-};
+#include "programa.h"
 
 void help() {
   std::cout << "==============================================\n"
@@ -93,26 +62,3 @@ void send_response(std::string_view header, std::string_view body = {}) {
     }
 }
 
-int main(int argc, char *argv[]) {
-    Opcion opciones{};
-    auto resultado = parse_args(argc, argv);
-
-    if (!resultado.has_value()) {
-        std::cerr << "No se pudieron parsear los argumentos correctamente." << std::endl;
-        return 1;
-    }
-
-    Opcion opcion_resultado = resultado.value();
-    std::cout << "Archivo especificado: " << opcion_resultado.get_archivo() << std::endl;
-
-    // Leer contenido del archivo
-    auto contenido = read_all(opcion_resultado.get_archivo());
-    if (contenido) {
-        send_response("Content-Length: " + std::to_string(contenido->size()), contenido.value());
-    } else {
-        send_response("404 Not Found");
-        return 1; // Salida con error
-    }
-
-    return 0;
-}
