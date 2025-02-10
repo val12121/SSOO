@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <optional>
+#include <filesystem>
 #include <sys/mman.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -34,10 +35,16 @@ public:
   void set_archivo(std::string archivo) { archivo_ = archivo; }
   void set_port(uint16_t port) { port_ = port; }
   void set_flag_port (bool flag) { flag_port = flag; }
+  void set_error_detected (bool flag) { error_detected_ = flag; }
+  void set_flag_base (bool flag) { flag_base = flag; }
+  void set_ruta (std::string ruta) { ruta_ = ruta; }
 
   // Getters
   bool get_verbose() { return flag_verbose; }
   bool get_help() { return flag_help; }
+  bool get_error_detected() { return error_detected_; }
+  bool get_flag_base() { return flag_base; }
+  std::string get_ruta() { return ruta_; }
   uint16_t get_port() const { return port_; }
   std::string get_archivo() const { return archivo_; }
 
@@ -45,7 +52,10 @@ private:
   bool flag_verbose = false;
   bool flag_help = false;
   bool flag_port = false;
+  bool flag_base = false;
+  bool error_detected_ = false;
   std::string archivo_ = "";
+  std::string ruta_ = "";
   uint16_t port_;
 };
 
@@ -153,5 +163,11 @@ std::expected<SafeFD, int> accept_connection(const SafeFD& socket, sockaddr_in& 
 //--------------------------------------
 
 int send_response(const SafeFD& socket, std::string_view header, std::string_view body = {});
+
+//--------------------------------------
+//---------> RECEIVE REQUEST <----------
+//--------------------------------------
+
+std::expected<std::string, int> receive_request(const SafeFD &socket, size_t max_size);
 
 #endif

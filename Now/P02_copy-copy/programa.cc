@@ -39,8 +39,44 @@ std::optional<Opcion> parse_args(int argc, char *argv[])
     {
       opciones.set_archivo(argumento);
     }
-    else if (argumento == "-p") {
+    else if (argumento == "-p")
+    {
       opciones.set_flag_port(true);
+      if (i + 1 < argc)
+      {
+        std::string argumento_plus = argv[i + 1];
+        if (!argumento_plus.starts_with("-"))
+        {
+          i++;
+          try
+          {
+            opciones.set_port(std::stoi(argumento_plus)); // Intenta convertir a int
+            // Si no lanza una excepción, es un número válido
+          }
+          catch (const std::invalid_argument &e)
+          {
+            opciones.set_error_detected(true); // La cadena no es un número entero válido
+          }
+        }
+      }
+    }
+    else if (argumento == "-b")
+    {
+      opciones.set_flag_base(true);
+      if (i + 1 < argc)
+      {
+        std::string argumento_plus = argv[i + 1];
+        if (!argumento_plus.starts_with("-"))
+        {
+          i++;
+          if (std::filesystem::is_directory(argumento_plus)) {
+            opciones.set_ruta(argumento_plus);
+          } 
+          else {
+            opciones.set_error_detected(true);
+          }
+        }
+      }
     }
     else
     {
@@ -50,7 +86,6 @@ std::optional<Opcion> parse_args(int argc, char *argv[])
   }
   return opciones;
 }
-
 //--------------------------------------
 //------------> READ ALL <--------------
 //--------------------------------------
@@ -108,9 +143,9 @@ std::expected<SafeMap, int> read_all(const std::string &archivo, Opcion opcion)
     ++aux;
   }
 
-  SafeMap SS(mapped_file, file_size, aux_s);
+  //SafeMap SS(mapped_file, file_size, aux_s);
   // Devolver el SafeMap
-  return SS;
+  return SafeMap(mapped_file, file_size, aux_s);
 }
 /*
 //--------------------------------------
@@ -130,7 +165,7 @@ void send_response(std::string_view header, std::string_view body)
 //-------------> GETENV <---------------
 //--------------------------------------
 
-std::string getenv_port (const std::string& name)
+std::string getenv_port(const std::string &name)
 {
   std::cout << name << std::endl;
   const char *value = std::getenv(name.c_str());
@@ -161,7 +196,7 @@ std::expected<SafeFD, int> make_socket(uint16_t port)
   server_addr.sin_family = AF_INET;
   server_addr.sin_port = htons(port);
   server_addr.sin_addr.s_addr = INADDR_ANY;
-
+  //Establece la conexion entre los puertos
   if (bind(fd, reinterpret_cast<sockaddr *>(&server_addr), sizeof(server_addr)) == -1)
   {
     close(fd);
@@ -209,4 +244,26 @@ int send_response(const SafeFD &socket, std::string_view header, std::string_vie
   std::string respuesta = std::string(header) + "\r\n" + std::string(body);
   ssize_t sent = send(socket.get_fd(), respuesta.data(), respuesta.size(), 0);
   return (sent == -1) ? errno : 0;
+}
+
+//--------------------------------------
+//---------> RECEIVE REQUEST <----------
+//--------------------------------------
+
+std::expected<std::string, int> receive_request(const SafeFD &socket, size_t max_size)
+{
+  std::string buffer(max_size, '\0');
+  ssize_t bytes_received = recv(socket.get_fd(), buffer.data(), max_size, 0);
+
+  if (bytes_received < 0)
+  {
+    return std::unexpected(errno);
+  }
+  else if (bytes_received == 0)
+  {
+    return std::unexpected(ECONNRESET); //Conexión terminada
+  }
+
+  buffer.resize(bytes_received);
+  return buffer;
 }
